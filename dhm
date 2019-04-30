@@ -1,0 +1,60 @@
+#!/bin/bash
+# Copy this to your .bash_profile
+
+DHM_CONFIG="${HOME}/.dhm"
+
+dhm_log() { echo "$@" 1>&2 ; }
+
+dhm()
+{
+    if [ $# -lt 1 ]; then
+        dhm --help
+        return 1
+    fi
+
+    local command
+    command="$1"
+    shift
+
+    case $command in
+        'help' | '--help')
+            dhm_log
+            dhm_log "Docker host manager"
+            dhm_log
+            dhm_log 'Usage:'
+            dhm_log '  dhm help                     Show this message'
+            dhm_log '  dhm use <host-selector>      Use the docker host specified by host-selector'
+        ;;
+
+        'use')
+            if [ $# -lt 1 ]; then
+                dhm --help
+                return
+            fi
+
+            local hostSelector
+            hostSelector="$1"
+
+            hostConfig=$(ls "$DHM_CONFIG" | grep "$hostSelector" | head -1)
+            if [[ ! "$hostConfig" ]]; then
+                dhm_log "Error: Couldn't find a host config matching selector '$hostSelector'"
+                return 2
+            fi
+
+            dhm_log "Using host config $hostConfig"
+            DOCKER_CERT_PATH="${DHM_CONFIG}/${hostConfig}"
+            . ${DOCKER_CERT_PATH}/env
+            dhm_log "DOCKER_HOST=$DOCKER_HOST"
+            dhm_log "DOCKER_CERT_PATH=$DOCKER_CERT_PATH"
+            dhm_log "DOCKER_TLS_VERIFY=$DOCKER_TLS_VERIFY"
+            export DOCKER_HOST DOCKER_CERT_PATH DOCKER_TLS_VERIFY
+        ;;
+
+        *)
+            dhm --help
+            return 127
+        ;;
+    esac
+
+    return 0
+}
